@@ -691,6 +691,7 @@ def two_factor_authentication(browser, logger, security_codes):
         return
 
 
+
 def accept_igcookie_dialogue(browser, logger):
     """Presses 'Accept' button on IG cookie dialogue"""
 
@@ -702,5 +703,18 @@ def accept_igcookie_dialogue(browser, logger):
 
     if offer_loaded:
         logger.info("- Accepted IG cookies by default...")
-        accept_elem = browser.find_element(By.XPATH, offer_elem_loc)
+        accept_elem = browser.find_element_by_xpath(offer_elem_loc)
         click_element(browser, accept_elem)
+
+    """New Login Dialog Workaround"""
+
+    login_elem_loc = read_xpath("mobile_click_login", "login_button")
+
+    login_loaded = explicit_wait(
+        browser, "VOEL", [login_elem_loc, "XPath"], logger, 4, False
+    )
+
+    if login_loaded:
+        logger.info("Login loaded...")
+        login_elem = browser.find_element_by_xpath(login_elem_loc)
+        click_element(browser, login_elem)
