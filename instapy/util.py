@@ -66,7 +66,6 @@ default_profile_pic_instagram = [
 
 next_screenshot = 1
 
-
 def is_private_profile(browser, logger, following=True):
     """
     Verify if account is Private
@@ -76,27 +75,20 @@ def is_private_profile(browser, logger, following=True):
     :param following: Not accessed
     :return: None if profile cannot be verified
     """
-
+    is_private=None
     try:
-        # Get profile owner information
-        shared_data = get_shared_data(browser)
-
-        # Sometimes shared_data["entry_data"]["ProfilePage"][0] is empty, but get_additional_data()
-        # fetches all data needed
-        get_key = shared_data.get("entry_data").get("ProfilePage")
-
-        if get_key:
-            data = get_key[0]
-        else:
-            data = get_additional_data(browser)
-    finally:
-        is_private = data["graphql"]["user"]["is_private"]
-
+        #DEF: 22jan function refactored
+        data = get_additional_data(browser)
+        is_private = data["items"][0]
+        is_private = is_private["user"]['is_private'] if is_private else None
         logger.info(
             "Checked if '{}' is private, and it is: '{}'".format(
-                data["graphql"]["user"]["username"], is_private
+                data["items"][0]["user"]["username"], is_private
             )
         )
+    except:
+        logger.info("Cannot find is_private so defined as None")
+        is_private=None
 
     return is_private
 
@@ -126,37 +118,36 @@ def evaluate_mandatory_words(text, mandatory_words_list, level=0):
 
 
 def validate_username(
-    browser,
-    username_or_link,
-    own_username,
-    ignore_users,
-    blacklist,
-    potency_ratio,
-    delimit_by_numbers,
-    max_followers,
-    max_following,
-    min_followers,
-    min_following,
-    min_posts,
-    max_posts,
-    skip_private,
-    skip_private_percentage,
-    skip_public,
-    skip_public_percentage,
-    skip_no_profile_pic,
-    skip_no_profile_pic_percentage,
-    skip_business,
-    skip_non_business,
-    skip_business_percentage,
-    skip_business_categories,
-    dont_skip_business_categories,
-    skip_bio_keyword,
-    mandatory_bio_keywords,
-    logger,
-    logfolder,
+        browser,
+        username_or_link,
+        own_username,
+        ignore_users,
+        blacklist,
+        potency_ratio,
+        delimit_by_numbers,
+        max_followers,
+        max_following,
+        min_followers,
+        min_following,
+        min_posts,
+        max_posts,
+        skip_private,
+        skip_private_percentage,
+        skip_public,
+        skip_public_percentage,
+        skip_no_profile_pic,
+        skip_no_profile_pic_percentage,
+        skip_business,
+        skip_non_business,
+        skip_business_percentage,
+        skip_business_categories,
+        dont_skip_business_categories,
+        skip_bio_keyword,
+        mandatory_bio_keywords,
+        logger,
+        logfolder,
 ):
     """Check if we can interact with the user"""
-
     # some features may not provide `username` and in those cases we will
     # get it from post's page.
     if "/" in username_or_link:
@@ -168,9 +159,11 @@ def validate_username(
         web_address_navigator(browser, link)
 
         try:
+            #todo: check if this section works
+            #old "PostPage[0].graphql.shortcode_media.owner.username"
             username = browser.execute_script(
                 "return window._sharedData.entry_data."
-                "PostPage[0].graphql.shortcode_media.owner.username"
+                "PostPage[0].items[0].user.username"
             )
 
         except WebDriverException:
@@ -178,9 +171,11 @@ def validate_username(
                 browser.execute_script("location.reload()")
                 update_activity(browser, state=None)
 
+                #todo: check if this section works
+                #old "PostPage[0].graphql.shortcode_media.owner.username"
                 username = browser.execute_script(
                     "return window._sharedData.entry_data."
-                    "PostPage[0].graphql.shortcode_media.owner.username"
+                    "PostPage[0].items[0].user.username"
                 )
 
             except WebDriverException:
@@ -226,9 +221,9 @@ def validate_username(
     # Checks the potential of target user by relationship status in order
     # to delimit actions within the desired boundary
     if (
-        potency_ratio
-        or delimit_by_numbers
-        and (max_followers or max_following or min_followers or min_following)
+            potency_ratio
+            or delimit_by_numbers
+            and (max_followers or max_following or min_followers or min_following)
     ):
 
         relationship_ratio = None
@@ -401,8 +396,8 @@ def validate_username(
             logger.error("~cannot get the post profile pic url")
             return False, "--> Sorry, couldn't get if user profile pic url\n"
         if (
-            profile_pic in default_profile_pic_instagram
-            or str(profile_pic).find("11906329_960233084022564_1448528159_a.jpg") > 0
+                profile_pic in default_profile_pic_instagram
+                or str(profile_pic).find("11906329_960233084022564_1448528159_a.jpg") > 0
         ) and (random.randint(0, 100) <= skip_no_profile_pic_percentage):
             return False, "{} has default instagram profile picture\n".format(username)
 
@@ -437,7 +432,7 @@ def validate_username(
                 # skip if not in dont_include
                 if category not in dont_skip_business_categories:
                     if len(dont_skip_business_categories) == 0 and (
-                        random.randint(0, 100) <= skip_business_percentage
+                            random.randint(0, 100) <= skip_business_percentage
                     ):
                         return False, "'{}' has a business account\n".format(username)
                     else:
@@ -481,7 +476,7 @@ def validate_username(
                 )
         # the mandatory keywords applies to the username as well as the bio text
         if mandatory_bio_keywords and not evaluate_mandatory_words(
-            username + " " + profile_bio, mandatory_bio_keywords
+                username + " " + profile_bio, mandatory_bio_keywords
         ):
             return False, "Mandatory bio keywords not found"
 
@@ -490,13 +485,12 @@ def validate_username(
 
 
 def getUserData(
-    query,
-    browser,
-    basequery="no-longer-needed",
+        query,
+        browser,
+        basequery="no-longer-needed",
 ):
     shared_data = get_shared_data(browser)
 
-    # Sometimes shared_data["entry_data"]["ProfilePage"][0] is empty, but get_additional_data()
     # fetches all data needed
     get_key = shared_data.get("entry_data").get("ProfilePage")
 
@@ -516,11 +510,19 @@ def getUserData(
 
 
 def getMediaData(
-    query,
-    browser,
+        query,
+        browser,
 ):
     additional_data = get_additional_data(browser)
-    data = additional_data["graphql"]["shortcode_media"]
+    #DEF: 20jan
+    data = additional_data["items"][0]
+
+    #todo: remove rewrite query by modifing call to getMediaData functions in other files
+    if query=="comments_disabled": query="comment_likes_enabled"
+    if query=="edge_media_to_parent_comment": query="comments"
+    if query=="edge_media_to_parent_comment.count": query="comment_count"
+    if query=="edge_media_preview_comment": query="preview_comments"
+    if query=="edge_media_preview_comment.count": query="comment_count"
 
     if query.find(".") == -1:
         data = data[query]
@@ -533,7 +535,7 @@ def getMediaData(
 
 
 def update_activity(
-    browser=None, action="server_calls", state=None, logfolder=None, logger=None
+        browser=None, action="server_calls", state=None, logfolder=None, logger=None
 ):
     """
     1. Record every Instagram server call (page load, content load, likes,
@@ -713,10 +715,10 @@ def get_active_users(browser, username, posts, boundary, logger):
         "~collecting the entire usernames from posts without a boundary!\n"
         if boundary is None
         else "~collecting only the visible usernames from posts without scrolling "
-        "at the boundary of zero..\n"
+             "at the boundary of zero..\n"
         if boundary == 0
         else "~collecting the usernames from posts with the boundary of {}"
-        "\n".format(boundary)
+             "\n".format(boundary)
     )
     # posts argument is the number of posts to collect usernames
     logger.info(
@@ -821,8 +823,8 @@ def get_active_users(browser, username, posts, boundary, logger):
                 )
                 # check if it should keep scrolling down or exit
                 if (
-                    scroll_height >= tmp_scroll_height
-                    and len(user_list) > user_list_len
+                        scroll_height >= tmp_scroll_height
+                        and len(user_list) > user_list_len
                 ):
                     tmp_scroll_height = scroll_height
                     user_list_len = len(user_list)
@@ -859,13 +861,13 @@ def get_active_users(browser, username, posts, boundary, logger):
                         break
 
                 if (
-                    scroll_it is False
-                    and likers_count
-                    and likers_count - 1 > len(user_list)
+                        scroll_it is False
+                        and likers_count
+                        and likers_count - 1 > len(user_list)
                 ):
 
                     if (
-                        boundary is not None and likers_count - 1 > boundary
+                            boundary is not None and likers_count - 1 > boundary
                     ) or boundary is None:
 
                         if try_again <= 1:  # can increase the amount of tries
@@ -1333,11 +1335,11 @@ def web_address_navigator(browser, link):
 
 @contextmanager
 def interruption_handler(
-    threaded=False,
-    SIG_type=signal.SIGINT,
-    handler=signal.SIG_IGN,
-    notify=None,
-    logger=None,
+        threaded=False,
+        SIG_type=signal.SIGINT,
+        handler=signal.SIG_IGN,
+        notify=None,
+        logger=None,
 ):
     """Handles external interrupt, usually initiated by the user like
     KeyboardInterrupt with CTRL+C"""
@@ -1358,7 +1360,7 @@ def interruption_handler(
 
 
 def highlight_print(
-    username=None, message=None, priority=None, level=None, logger=None
+        username=None, message=None, priority=None, level=None, logger=None
 ):
     """Print headers in a highlighted style"""
     # can add other highlighters at other priorities enriching this function
@@ -1624,9 +1626,9 @@ def check_authorization(browser, username, method, logger, notify=True):
         # navigate to owner's profile page only if it is on an unusual page
         current_url = get_current_url(browser)
         if (
-            not current_url
-            or "https://www.instagram.com" not in current_url
-            or "https://www.instagram.com/graphql/" in current_url
+                not current_url
+                or "https://www.instagram.com" not in current_url
+                or "https://www.instagram.com/graphql/" in current_url
         ):
             profile_link = "https://www.instagram.com/{}/".format(username)
             web_address_navigator(browser, profile_link)
@@ -2064,11 +2066,11 @@ def get_action_delay(action):
     config = Settings.action_delays
 
     if (
-        not config
-        or action not in config
-        or config["enabled"] is not True
-        or config[action] is None
-        or isinstance(config[action], (int, float)) is not True
+            not config
+            or action not in config
+            or config["enabled"] is not True
+            or config[action] is None
+            or isinstance(config[action], (int, float)) is not True
     ):
         return defaults[action]
 
@@ -2077,13 +2079,13 @@ def get_action_delay(action):
 
     # randomize the custom delay in user-defined range
     if (
-        config["randomize"] is True
-        and isinstance(config["random_range"], tuple)
-        and len(config["random_range"]) == 2
-        and all(
-            (isinstance(i, (type(None), int, float)) for i in config["random_range"])
-        )
-        and any(not isinstance(i, type(None)) for i in config["random_range"])
+            config["randomize"] is True
+            and isinstance(config["random_range"], tuple)
+            and len(config["random_range"]) == 2
+            and all(
+        (isinstance(i, (type(None), int, float)) for i in config["random_range"])
+    )
+            and any(not isinstance(i, type(None)) for i in config["random_range"])
     ):
         min_range = config["random_range"][0]
         max_range = config["random_range"][1]
@@ -2250,7 +2252,7 @@ def get_epoch_time_diff(time_stamp, logger):
 
         former_epoch = (log_time - datetime.datetime(1970, 1, 1)).total_seconds()
         cur_epoch = (
-            datetime.datetime.now() - datetime.datetime(1970, 1, 1)
+                datetime.datetime.now() - datetime.datetime(1970, 1, 1)
         ).total_seconds()
 
         return cur_epoch - former_epoch
@@ -2329,11 +2331,11 @@ def progress_tracker(current_value, highest_value, initial_time, logger):
         tracker_line = "-----------------------------------"
         filled_index = int(progress_percent / 2.77)
         progress_container = (
-            "[" + tracker_line[:filled_index] + "+" + tracker_line[filled_index:] + "]"
+                "[" + tracker_line[:filled_index] + "+" + tracker_line[filled_index:] + "]"
         )
         progress_container = (
-            progress_container[: filled_index + 1].replace("-", "=")
-            + progress_container[filled_index + 1 :]
+                progress_container[: filled_index + 1].replace("-", "=")
+                + progress_container[filled_index + 1 :]
         )
 
         total_message = (
@@ -2485,14 +2487,17 @@ def get_cord_location(browser, location):
     ).text
     data = json.loads(json_text)
 
-    lat = data["graphql"]["location"]["lat"]
-    lon = data["graphql"]["location"]["lng"]
+    #DEF: 22jan
+    lat = lon = ""
+    if "location" in data["items"][0]:
+        lat = data["items"][0]["location"]["lat"]
+        lon = data["items"][0]["location"]["lng"]
 
     return lat, lon
 
 
 def get_bounding_box(
-    latitude_in_degrees, longitude_in_degrees, half_side_in_miles, logger
+        latitude_in_degrees, longitude_in_degrees, half_side_in_miles, logger
 ):
     if half_side_in_miles == 0:
         logger.error("Check your Radius its lower then 0")
@@ -2631,7 +2636,13 @@ def get_additional_data(browser):
     for text in soup(text=re.compile(r"window.__additionalDataLoaded")):
         if re.search("^window.__additionalDataLoaded", text):
             additional_data = json.loads(re.search("{.*}", text).group())
-            break
+            return additional_data
+
+    for text in soup(text=re.compile(r"window._sharedData")):
+        if re.search("^window._sharedData", text):
+            additional_data = json.loads(re.search("{.*}", text).group())
+            data = additional_data["entry_data"]["PostPage"][0]
+            return data
 
     return additional_data
 
